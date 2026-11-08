@@ -1,0 +1,623 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Sales Forecast Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: white header over a pistachio page; controls, four summary figures, one wide forecast chart, then season and product cards side by side, then the month-by-month table. */
+:root{
+ --bg:#E7F1D0; --bg2:#F4F9E8; --card:#FFFFFF; --line:#CFE0AE; --line2:#E4EDCF;
+ --ink:#1F2B18; --ink2:#44553A; --muted:#556548;
+ --brand:#3F6B2A; --brand-h:#335823; --pist:#93C572; --pist2:#DCEBBE; --band:#CFE3A9;
+ --blue:#2F7FBF; --amber:#C68A14; --coral:#C4492F; --up:#2F6B35; --down:#B4401F;
+ --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+ --body:'Figtree','Segoe UI',system-ui,sans-serif;
+ --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+ color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body)}
+.app{max-width:1120px;margin:0 auto;padding-inline:clamp(16px,3vw,28px);padding-block:0 56px}
+h1,h2,h3,h4,p{margin:0}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;letter-spacing:-.01em;font-weight:700}
+h2{font-size:20px;line-height:1.2}
+h3{font-size:17px;line-height:1.25}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:600 11px/1.2 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+.top{background:var(--card);border-bottom:1px solid var(--line);margin-inline:calc(-1*clamp(16px,3vw,28px));padding:14px clamp(16px,3vw,28px);display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand-name{font:700 21px/1.1 var(--display);letter-spacing:-.015em}
+.brand-sub{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{appearance:none;font:600 14px/1 var(--body);padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{background:var(--bg2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-h)}
+.file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.file:focus-visible+label.btn{outline:2px solid var(--brand);outline-offset:2px}
+
+#notice{margin-top:14px}
+.notice{padding:10px 14px;border-radius:8px;border:1px solid #E4A18C;background:#FCEDE6;color:#7A2813;font-size:14px}
+.notice.ok{background:var(--pist2);border-color:var(--pist);color:var(--ink)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 16px;flex-wrap:wrap;margin-bottom:12px}
+.card-head p{color:var(--muted);font-size:14px;margin-top:3px;max-width:60ch}
+.stack{display:flex;flex-direction:column;gap:18px;padding-top:18px}
+.grid2{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.field>.lbl{font:600 12px var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+select{font:500 15px var(--body);color:var(--ink);background:#fff;border:1px solid #BCD292;border-radius:8px;padding:9px 12px;min-width:200px;max-width:100%}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{appearance:none;border:0;background:#fff;font:600 14px var(--body);padding:9px 16px;cursor:pointer;color:var(--ink2);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+.seg button:disabled{color:#9AA68C;cursor:not-allowed;background:var(--bg2)}
+input[type=range]{width:200px;max-width:100%;accent-color:var(--brand);margin:8px 0}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink2);padding-bottom:6px}
+.check input{width:18px;height:18px;accent-color:var(--brand)}
+
+/* summary figures */
+.kpis{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.kpi .v{font:700 28px/1.1 var(--display);letter-spacing:-.02em;margin:6px 0 4px;overflow-wrap:anywhere}
+.kpi .s{font-size:13px;color:var(--muted)}
+.up{color:var(--up)}.down{color:var(--down)}
+
+/* charts */
+.legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-bottom:8px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw-line{width:22px;height:0;border-top:2.5px solid var(--ink)}
+.sw-dash{width:22px;height:0;border-top:2.5px dashed var(--brand)}
+.sw-band{width:22px;height:12px;background:var(--band);border-radius:3px}
+.sw-dot{width:10px;height:10px;border-radius:50%;background:var(--blue)}
+.chartbox{position:relative}
+.chartbox svg{display:block;max-width:100%}
+.chartbox text{font:11.5px var(--mono);fill:var(--muted)}
+.chartbox text.lbl{font:600 12.5px var(--body);fill:var(--ink);paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.chartbox .gl{stroke:var(--line2);stroke-width:1}
+.chartbox .ax{stroke:var(--line);stroke-width:1}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:#F4F9E8;border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.45;white-space:nowrap;box-shadow:0 6px 20px rgba(31,43,24,.25);z-index:3}
+.tip b{font-weight:700}
+.empty{padding:22px;border:1.5px dashed var(--line);border-radius:10px;text-align:center;color:var(--muted);font-size:14px}
+
+/* product rows */
+.prows{display:flex;flex-direction:column;gap:4px}
+.prow{appearance:none;display:grid;grid-template-columns:minmax(96px,150px) 1fr auto auto;gap:6px 12px;align-items:center;width:100%;text-align:left;background:#fff;border:1px solid transparent;border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit}
+.prow:hover{background:var(--bg2)}
+.prow.sel{border-color:var(--pist);background:var(--bg2)}
+.prow .pn{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.prow .ptrack{height:12px;background:var(--line2);border-radius:6px;overflow:hidden;min-width:40px}
+.prow .ptrack i{display:block;height:100%;background:#A9CC84;border-radius:6px}
+.prow.sel .ptrack i{background:var(--brand)}
+.prow .pv{font:500 13px var(--mono);text-align:right;min-width:62px}
+.prow .pg{font:600 12.5px var(--mono);min-width:62px;text-align:right}
+@media (max-width:520px){.prow{grid-template-columns:1fr auto auto}.prow .ptrack{grid-column:1/-1;order:5}}
+
+/* table + lists */
+.scroll{overflow:auto;max-width:100%}
+.tbl{border-collapse:collapse;width:100%;font-size:14px}
+.tbl th{font:600 11px/1.2 var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:right;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--line2);text-align:right;font-family:var(--mono);font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tbl td:first-child{font-family:var(--body);font-size:14px;font-weight:600}
+.tbl tbody tr:hover td{background:var(--bg2)}
+.facts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.facts li{padding-left:18px;position:relative;max-width:68ch}
+.facts li::before{content:"";position:absolute;left:0;top:.6em;width:8px;height:8px;border-radius:50%;background:var(--pist)}
+.facts li.warn::before{background:var(--amber)}
+details summary{cursor:pointer;font-weight:600;color:var(--ink2)}
+details[open] summary{margin-bottom:10px}
+.note{font-size:13.5px;color:var(--muted);max-width:74ch}
+textarea{font:12.5px var(--mono);width:100%;min-height:130px;border:1px solid #BCD292;border-radius:8px;padding:10px;margin-top:10px;color:var(--ink);background:#fff}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+<div class="app">
+ <header class="top">
+  <div class="brand">
+   <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><ellipse cx="19" cy="19" rx="11" ry="16" transform="rotate(32 19 19)" fill="#93C572"/><ellipse cx="19" cy="19" rx="6.2" ry="10.5" transform="rotate(32 19 19)" fill="#E4F0C8"/><path d="M13.5 10.5c2.4 5 6.6 11 11.5 17" stroke="#3F6B2A" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+   <div><div class="brand-name">Sales Forecast Lab</div><div class="brand-sub" id="dsLine">Loading data</div></div>
+  </div>
+  <div class="actions">
+   <input class="file" type="file" id="file" accept=".csv,.tsv,.txt,text/csv">
+   <label class="btn primary" for="file">Use my CSV</label>
+   <button class="btn" id="reset" type="button">Reset to sample</button>
+  </div>
+ </header>
+ <div id="notice" role="status" aria-live="polite"></div>
+
+ <section class="stack" aria-label="Forecast">
+  <div class="card">
+   <div class="controls">
+    <div class="field"><label for="product">Product</label><select id="product"></select></div>
+    <div class="field"><span class="lbl" id="mLbl">Measure</span><div class="seg" role="group" aria-labelledby="mLbl"><button type="button" id="mUnits" aria-pressed="true">Units</button><button type="button" id="mRev" aria-pressed="false">Revenue</button></div></div>
+    <div class="field"><label for="horizon">Forecast length: <b id="hVal">6 months</b></label><input type="range" id="horizon" min="3" max="12" step="1" value="6"></div>
+    <label class="check" for="test"><input type="checkbox" id="test"> Show the accuracy test</label>
+   </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+   <div class="card-head"><div><h2 id="mainTitle">Forecast</h2><p id="mainSub"></p></div></div>
+   <div class="legend" id="legend"></div>
+   <div class="chartbox" id="mainChart"></div>
+  </div>
+
+  <div class="grid2">
+   <div class="card"><div class="card-head"><div><h3>When sales peak</h3><p>How an average month compares with a typical month. Above 1.00 is a strong month.</p></div></div><div class="chartbox" id="seasonChart"></div></div>
+   <div class="card" id="prodCard"><div class="card-head"><div><h3 id="prodTitle">Products compared</h3><p>Expected sales over the forecast period. Select a product to forecast it.</p></div></div><div class="prows" id="prows"></div></div>
+  </div>
+
+  <div class="card">
+   <div class="card-head"><div><h3>Month by month</h3><p id="tblSub"></p></div><button class="btn" type="button" id="copy">Copy as CSV</button></div>
+   <div class="scroll"><table class="tbl" id="tbl"></table></div>
+   <textarea id="csvBox" readonly hidden aria-label="Forecast as CSV"></textarea>
+   <span class="note" id="copyMsg" role="status"></span>
+  </div>
+
+  <div class="card">
+   <h3 style="margin-bottom:10px">What the data says</h3>
+   <ul class="facts" id="facts"></ul>
+  </div>
+
+  <div class="card">
+   <details>
+    <summary>How the forecast works</summary>
+    <div class="note" style="display:flex;flex-direction:column;gap:8px">
+     <p>The page uses Holt-Winters exponential smoothing. It tracks three things in the monthly history: the current level of sales, the direction they are moving, and a typical multiplier for each calendar month. It then projects all three forward. The smoothing settings are chosen by trying a grid of values and keeping the ones that fit the history best.</p>
+     <p>The likely range is a rough 95% band built from how far the model missed in the past, and it widens the further ahead it looks.</p>
+     <p>The accuracy test hides the last 6 months, forecasts them, and compares with what really happened. The error shown is the average percentage miss.</p>
+     <p>Limits: it needs at least 24 months of history to learn seasons (12 months gives a trend only). It does not know about promotions, stock-outs, price changes or one-off events. Treat the result as a baseline to adjust, not a promise.</p>
+     <p>Your file is read in your browser and is not uploaded anywhere. Accepted columns: a date (any day or month is rolled up to months), a product or item name (optional), and units sold. Revenue is used if present, or worked out from a price column.</p>
+    </div>
+   </details>
+  </div>
+ </section>
+</div>
+<script>
+/* ===== Forecast engine: Holt-Winters (multiplicative season, additive trend) ===== */
+const FC = (function () {
+  'use strict';
+  const M = 12;
+  const mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
+
+  /* ---------- CSV ---------- */
+  function parseCSV(text) {
+    text = String(text).replace(/^﻿/, '');
+    const first = text.split(/\r?\n/)[0] || '';
+    const delim = [',', '\t', ';'].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+    const rows = []; let row = [], f = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === delim) { row.push(f); f = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(f); f = ''; if (row.some(x => x.trim() !== '')) rows.push(row); row = []; }
+      else f += ch;
+    }
+    row.push(f); if (row.some(x => x.trim() !== '')) rows.push(row);
+    return rows;
+  }
+
+  function parseDate(s) {
+    s = String(s).trim();
+    let m = /^(\d{4})[-\/](\d{1,2})(?:[-\/](\d{1,2}))?/.exec(s);
+    if (m) return { y: +m[1], m: +m[2] - 1 };
+    m = /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/.exec(s);          // dd/mm/yyyy (day first, as in India and the UK)
+    if (m) return { y: +m[3], m: +m[2] - 1 };
+    m = /^([A-Za-z]{3,9})[ \-,]+(\d{2,4})$/.exec(s);               // Jan 2024, Jan-24
+    if (m) {
+      const mi = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(m[1].slice(0, 3).toLowerCase());
+      if (mi >= 0) return { y: m[2].length === 2 ? 2000 + +m[2] : +m[2], m: mi };
+    }
+    if (/^[\d.,\s]+$/.test(s)) return null;                       // a bare number is not a date
+    const t = Date.parse(s);
+    if (!isNaN(t)) { const d = new Date(t); return { y: d.getFullYear(), m: d.getMonth() }; }
+    return null;
+  }
+  const num = v => { const x = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isFinite(x) ? x : NaN; };
+
+  /* Turn any table with a date, an optional product and a numeric column into monthly series. */
+  function buildDataset(table) {
+    if (table.length < 3) throw new Error('The file needs a header row and at least two data rows.');
+    const heads = table[0].map(h => String(h).trim());
+    const low = heads.map(h => h.toLowerCase());
+    const body = table.slice(1, 600);
+    const share = (j, f) => body.filter(r => f(r[j])).length / (body.length || 1);
+    const dateShare = heads.map((_, j) => share(j, v => parseDate(v) !== null && /\d/.test(String(v))));
+    const numShare = heads.map((_, j) => share(j, v => isFinite(num(v)) && String(v).trim() !== ''));
+    const pick = (re, ok) => low.findIndex((h, j) => re.test(h) && ok(j));
+    let dI = pick(/date|month|period|day|time/, j => dateShare[j] > 0.8);
+    if (dI < 0) dI = dateShare.findIndex(s => s > 0.8);
+    if (dI < 0) throw new Error('No date column found. Add a column named Date with values such as 2025-03-01 or Mar 2025.');
+    let uI = pick(/unit|qty|quantity|sold|volume|orders|sales/, j => j !== dI && numShare[j] > 0.8 && !/price|revenue|amount|value/.test(low[j]));
+    let rI = pick(/revenue|amount|turnover|value|sales/, j => j !== dI && j !== uI && numShare[j] > 0.8);
+    const pI0 = pick(/product|item|name|brand|sku|model/, j => j !== dI && numShare[j] < 0.5);
+    let pI = pI0 >= 0 ? pI0 : pick(/categor|segment|type|region/, j => j !== dI && numShare[j] < 0.5);
+    let prI = pick(/price|mrp|rate/, j => j !== dI && j !== uI && j !== rI && numShare[j] > 0.8);
+    if (uI < 0 && rI >= 0) { uI = rI; rI = -1; }
+    if (uI < 0) uI = numShare.findIndex((s, j) => s > 0.8 && j !== dI && j !== prI);
+    if (uI < 0) throw new Error('No numeric column to forecast. Add a column such as Units Sold.');
+    if (rI < 0 && prI >= 0) rI = -2;                                 // revenue = units x price
+    const prod = new Map();
+    let bad = 0;
+    for (const r of table.slice(1)) {
+      const d = parseDate(r[dI]), u = num(r[uI]);
+      if (!d || !isFinite(u)) { bad++; continue; }
+      const name = pI >= 0 ? String(r[pI]).trim() || 'Unnamed' : 'All sales';
+      const key = d.y * 12 + d.m;
+      let mp = prod.get(name); if (!mp) { mp = new Map(); prod.set(name, mp); }
+      let c = mp.get(key); if (!c) { c = { u: 0, r: 0, hasR: false }; mp.set(key, c); }
+      c.u += u;
+      if (rI >= 0 && isFinite(num(r[rI]))) { c.r += num(r[rI]); c.hasR = true; }
+      else if (rI === -2 && isFinite(num(r[prI]))) { c.r += u * num(r[prI]); c.hasR = true; }
+    }
+    if (!prod.size) throw new Error('No rows could be read. Check the date and number columns.');
+    const keys = [...prod.values()].flatMap(mp => [...mp.keys()]);
+    const k0 = Math.min(...keys), k1 = Math.max(...keys);
+    if (k1 - k0 < 11) throw new Error('Need at least 12 months of history. This file covers ' + (k1 - k0 + 1) + '.');
+    const months = []; for (let k = k0; k <= k1; k++) months.push(k);
+    const fill = a => {                                              // fill gaps by straight-line interpolation
+      const out = a.slice();
+      for (let i = 0; i < out.length; i++) if (out[i] == null) {
+        let l = i - 1, r = i + 1; while (l >= 0 && out[l] == null) l--; while (r < out.length && a[r] == null) r++;
+        out[i] = l >= 0 && r < out.length ? out[l] + (a[r] - out[l]) * (i - l) / (r - l) : l >= 0 ? out[l] : a[r];
+      }
+      return out;
+    };
+    const series = {};
+    let anyRev = true;
+    for (const [name, mp] of prod) {
+      const u = fill(months.map(k => mp.has(k) ? mp.get(k).u : null));
+      const hasR = [...mp.values()].every(c => c.hasR);
+      const rv = hasR ? fill(months.map(k => mp.has(k) ? mp.get(k).r : null)) : null;
+      if (!rv) anyRev = false;
+      series[name] = { units: u, revenue: rv };
+    }
+    const names = Object.keys(series);
+    if (names.length > 1) {
+      series['All products'] = { units: months.map((_, i) => names.reduce((s, n) => s + series[n].units[i], 0)), revenue: anyRev ? months.map((_, i) => names.reduce((s, n) => s + series[n].revenue[i], 0)) : null };
+    }
+    return { months, names: names.slice().sort(), all: names.length > 1, series, hasRevenue: anyRev, bad,
+      cols: { date: heads[dI], product: pI >= 0 ? heads[pI] : null, units: heads[uI], revenue: rI === -2 ? heads[uI] + ' x ' + heads[prI] : rI >= 0 ? heads[rI] : null } };
+  }
+
+  /* ---------- Holt-Winters ---------- */
+  function runHW(y, a, b, g, init) {
+    let l = init.l0, t = init.b0; const s = init.s.slice(), fitted = [], rel = []; let sse = 0;
+    for (let i = 0; i < y.length; i++) {
+      const ix = i % M, yh = (l + t) * s[ix], e = y[i] - yh;
+      sse += e * e; fitted.push(yh); rel.push(e / (yh || 1));
+      const ln = a * (y[i] / s[ix]) + (1 - a) * (l + t);
+      const bn = b * (ln - l) + (1 - b) * t;
+      s[ix] = g * (y[i] / (l + t)) + (1 - g) * s[ix];
+      l = ln; t = bn;
+    }
+    return { sse, l, t, s, fitted, rel };
+  }
+  function runHolt(y, a, b, init) {
+    let l = init.l0, t = init.b0; const fitted = [], rel = []; let sse = 0;
+    for (let i = 0; i < y.length; i++) {
+      const yh = l + t, e = y[i] - yh; sse += e * e; fitted.push(yh); rel.push(e / (yh || 1));
+      const ln = a * y[i] + (1 - a) * (l + t); t = b * (ln - l) + (1 - b) * t; l = ln;
+    }
+    return { sse, l, t, fitted, rel };
+  }
+  const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
+
+  /* Fit on y and forecast h steps. startMonth is the calendar month (0-11) of y[0]. */
+  function forecast(y, h, startMonth) {
+    const n = y.length, positive = y.every(v => v > 0);
+    const A = [0.05, 0.15, 0.3, 0.45, 0.6, 0.8], B = [0.01, 0.05, 0.1, 0.2, 0.35], G = [0.05, 0.2, 0.4, 0.6, 0.8];
+    let fc = [], res, mode, season = null, par = {};
+    if (n >= 2 * M && positive) {
+      mode = 'seasonal';
+      const k = Math.floor(n / M), avg = []; for (let j = 0; j < k; j++) avg.push(mean(y.slice(j * M, j * M + M)));
+      let s0 = Array.from({ length: M }, (_, i) => mean(avg.map((av, j) => y[j * M + i] / av)));
+      const sm = mean(s0); s0 = s0.map(v => v / sm);
+      const b0 = (avg[k - 1] - avg[0]) / ((k - 1) * M), l0 = avg[0] - b0 * (M + 1) / 2;
+      let best = null;
+      for (const a of A) for (const b of B) for (const g of G) {
+        const r = runHW(y, a, b, g, { l0, b0, s: s0 });
+        if (!best || r.sse < best.r.sse) best = { r, a, b, g };
+      }
+      res = best.r; par = { alpha: best.a, beta: best.b, gamma: best.g };
+      for (let i = 1; i <= h; i++) fc.push(Math.max(0, (res.l + i * res.t) * res.s[(n + i - 1) % M]));
+      const idx = new Array(M); for (let p = 0; p < M; p++) idx[(startMonth + p) % M] = res.s[p];
+      const im = mean(idx); season = idx.map(v => v / im);
+    } else if (n >= 6) {
+      mode = 'trend';
+      const span = Math.min(n - 1, 6), b0 = (y[span] - y[0]) / span;
+      let best = null;
+      for (const a of A) for (const b of B) { const r = runHolt(y, a, b, { l0: y[0], b0 }); if (!best || r.sse < best.r.sse) best = { r, a, b }; }
+      res = best.r; par = { alpha: best.a, beta: best.b };
+      for (let i = 1; i <= h; i++) fc.push(Math.max(0, res.l + i * res.t));
+    } else {
+      mode = 'mean';
+      const m = mean(y); res = { fitted: y.map(() => m), rel: y.map(v => (v - m) / (m || 1)) };
+      fc = Array.from({ length: h }, () => m);
+    }
+    const warm = mode === 'seasonal' ? M : Math.min(3, n - 1);
+    const sig = Math.max(0.01, sd(res.rel.slice(warm)) || 0.05);
+    const lo = fc.map((v, i) => Math.max(0, v * (1 - 1.96 * sig * Math.sqrt(i + 1)))), hi = fc.map((v, i) => v * (1 + 1.96 * sig * Math.sqrt(i + 1)));
+    return { fc, lo, hi, fitted: res.fitted, sigma: sig, mode, season, par, n };
+  }
+
+  /* Hide the last H points, predict them, and measure the miss. */
+  function backtest(y, H, startMonth) {
+    if (y.length - H < 12) return null;
+    const f = forecast(y.slice(0, y.length - H), H, startMonth), act = y.slice(-H);
+    const ape = act.map((a, i) => a ? Math.abs(a - f.fc[i]) / a : 0);
+    return { pred: f.fc, lo: f.lo, hi: f.hi, actual: act, mape: mean(ape) * 100, bias: (mean(f.fc) / mean(act) - 1) * 100, mode: f.mode };
+  }
+
+  return { parseCSV, buildDataset, forecast, backtest, mean };
+})();
+if (typeof module !== 'undefined') module.exports = FC;
+
+</script>
+<script>
+(function () {
+'use strict';
+const $ = s => document.querySelector(s);
+const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sum = a => a.reduce((s, x) => s + x, 0);
+const mOf = k => ((k % 12) + 12) % 12;
+const mlabel = k => MN[mOf(k)] + ' ' + Math.floor(k / 12);
+const SAMPLE_CSV = "Date,Product,Category,Units Sold,Unit Price,Revenue\n2023-01-01,Aurora Buds Pro,Earbuds,417,2999,1250583\n2023-02-01,Aurora Buds Pro,Earbuds,422,2999,1265578\n2023-03-01,Aurora Buds Pro,Earbuds,514,2999,1541486\n2023-04-01,Aurora Buds Pro,Earbuds,522,2999,1565478\n2023-05-01,Aurora Buds Pro,Earbuds,586,2999,1757414\n2023-06-01,Aurora Buds Pro,Earbuds,583,2999,1748417\n2023-07-01,Aurora Buds Pro,Earbuds,568,2999,1703432\n2023-08-01,Aurora Buds Pro,Earbuds,532,2999,1595468\n2023-09-01,Aurora Buds Pro,Earbuds,590,2999,1769410\n2023-10-01,Aurora Buds Pro,Earbuds,638,2999,1913362\n2023-11-01,Aurora Buds Pro,Earbuds,759,2999,2276241\n2023-12-01,Aurora Buds Pro,Earbuds,794,2999,2381206\n2024-01-01,Aurora Buds Pro,Earbuds,445,3059,1361255\n2024-02-01,Aurora Buds Pro,Earbuds,546,3059,1670214\n2024-03-01,Aurora Buds Pro,Earbuds,598,3059,1829282\n2024-04-01,Aurora Buds Pro,Earbuds,610,3059,1865990\n2024-05-01,Aurora Buds Pro,Earbuds,651,3059,1991409\n2024-06-01,Aurora Buds Pro,Earbuds,622,3059,1902698\n2024-07-01,Aurora Buds Pro,Earbuds,754,3059,2306486\n2024-08-01,Aurora Buds Pro,Earbuds,655,3059,2003645\n2024-09-01,Aurora Buds Pro,Earbuds,672,3059,2055648\n2024-10-01,Aurora Buds Pro,Earbuds,777,3059,2376843\n2024-11-01,Aurora Buds Pro,Earbuds,767,3059,2346253\n2024-12-01,Aurora Buds Pro,Earbuds,1027,3059,3141593\n2025-01-01,Aurora Buds Pro,Earbuds,569,3119,1774711\n2025-02-01,Aurora Buds Pro,Earbuds,553,3119,1724807\n2025-03-01,Aurora Buds Pro,Earbuds,662,3119,2064778\n2025-04-01,Aurora Buds Pro,Earbuds,798,3119,2488962\n2025-05-01,Aurora Buds Pro,Earbuds,718,3119,2239442\n2025-06-01,Aurora Buds Pro,Earbuds,712,3119,2220728\n2025-07-01,Aurora Buds Pro,Earbuds,782,3119,2439058\n2025-08-01,Aurora Buds Pro,Earbuds,783,3119,2442177\n2025-09-01,Aurora Buds Pro,Earbuds,738,3119,2301822\n2025-10-01,Aurora Buds Pro,Earbuds,838,3119,2613722\n2025-11-01,Aurora Buds Pro,Earbuds,1076,3119,3356044\n2025-12-01,Aurora Buds Pro,Earbuds,1136,3119,3543184\n2026-01-01,Aurora Buds Pro,Earbuds,655,3179,2082245\n2026-02-01,Aurora Buds Pro,Earbuds,693,3179,2203047\n2026-03-01,Aurora Buds Pro,Earbuds,783,3179,2489157\n2026-04-01,Aurora Buds Pro,Earbuds,786,3179,2498694\n2026-05-01,Aurora Buds Pro,Earbuds,838,3179,2664002\n2026-06-01,Aurora Buds Pro,Earbuds,888,3179,2822952\n2026-07-01,Aurora Buds Pro,Earbuds,979,3179,3112241\n2026-08-01,Aurora Buds Pro,Earbuds,836,3179,2657644\n2026-09-01,Aurora Buds Pro,Earbuds,921,3179,2927859\n2026-10-01,Aurora Buds Pro,Earbuds,1083,3179,3442857\n2023-01-01,Zen Watch S2,Smartwatches,236,4999,1179764\n2023-02-01,Zen Watch S2,Smartwatches,262,4999,1309738\n2023-03-01,Zen Watch S2,Smartwatches,292,4999,1459708\n2023-04-01,Zen Watch S2,Smartwatches,294,4999,1469706\n2023-05-01,Zen Watch S2,Smartwatches,300,4999,1499700\n2023-06-01,Zen Watch S2,Smartwatches,306,4999,1529694\n2023-07-01,Zen Watch S2,Smartwatches,295,4999,1474705\n2023-08-01,Zen Watch S2,Smartwatches,328,4999,1639672\n2023-09-01,Zen Watch S2,Smartwatches,267,4999,1334733\n2023-10-01,Zen Watch S2,Smartwatches,364,4999,1819636\n2023-11-01,Zen Watch S2,Smartwatches,433,4999,2164567\n2023-12-01,Zen Watch S2,Smartwatches,420,4999,2099580\n2024-01-01,Zen Watch S2,Smartwatches,272,5099,1386928\n2024-02-01,Zen Watch S2,Smartwatches,289,5099,1473611\n2024-03-01,Zen Watch S2,Smartwatches,321,5099,1636779\n2024-04-01,Zen Watch S2,Smartwatches,311,5099,1585789\n2024-05-01,Zen Watch S2,Smartwatches,336,5099,1713264\n2024-06-01,Zen Watch S2,Smartwatches,349,5099,1779551\n2024-07-01,Zen Watch S2,Smartwatches,340,5099,1733660\n2024-08-01,Zen Watch S2,Smartwatches,334,5099,1703066\n2024-09-01,Zen Watch S2,Smartwatches,349,5099,1779551\n2024-10-01,Zen Watch S2,Smartwatches,371,5099,1891729\n2024-11-01,Zen Watch S2,Smartwatches,455,5099,2320045\n2024-12-01,Zen Watch S2,Smartwatches,477,5099,2432223\n2025-01-01,Zen Watch S2,Smartwatches,281,5199,1460919\n2025-02-01,Zen Watch S2,Smartwatches,301,5199,1564899\n2025-03-01,Zen Watch S2,Smartwatches,339,5199,1762461\n2025-04-01,Zen Watch S2,Smartwatches,343,5199,1783257\n2025-05-01,Zen Watch S2,Smartwatches,358,5199,1861242\n2025-06-01,Zen Watch S2,Smartwatches,384,5199,1996416\n2025-07-01,Zen Watch S2,Smartwatches,377,5199,1960023\n2025-08-01,Zen Watch S2,Smartwatches,372,5199,1934028\n2025-09-01,Zen Watch S2,Smartwatches,360,5199,1871640\n2025-10-01,Zen Watch S2,Smartwatches,418,5199,2173182\n2025-11-01,Zen Watch S2,Smartwatches,475,5199,2469525\n2025-12-01,Zen Watch S2,Smartwatches,529,5199,2750271\n2026-01-01,Zen Watch S2,Smartwatches,323,5299,1711577\n2026-02-01,Zen Watch S2,Smartwatches,300,5299,1589700\n2026-03-01,Zen Watch S2,Smartwatches,384,5299,2034816\n2026-04-01,Zen Watch S2,Smartwatches,390,5299,2066610\n2026-05-01,Zen Watch S2,Smartwatches,367,5299,1944733\n2026-06-01,Zen Watch S2,Smartwatches,450,5299,2384550\n2026-07-01,Zen Watch S2,Smartwatches,414,5299,2193786\n2026-08-01,Zen Watch S2,Smartwatches,406,5299,2151394\n2026-09-01,Zen Watch S2,Smartwatches,425,5299,2252075\n2026-10-01,Zen Watch S2,Smartwatches,426,5299,2257374\n2023-01-01,Volt Backpack,Backpacks,330,1799,593670\n2023-02-01,Volt Backpack,Backpacks,324,1799,582876\n2023-03-01,Volt Backpack,Backpacks,354,1799,636846\n2023-04-01,Volt Backpack,Backpacks,401,1799,721399\n2023-05-01,Volt Backpack,Backpacks,473,1799,850927\n2023-06-01,Volt Backpack,Backpacks,612,1799,1100988\n2023-07-01,Volt Backpack,Backpacks,522,1799,939078\n2023-08-01,Volt Backpack,Backpacks,453,1799,814947\n2023-09-01,Volt Backpack,Backpacks,405,1799,728595\n2023-10-01,Volt Backpack,Backpacks,379,1799,681821\n2023-11-01,Volt Backpack,Backpacks,421,1799,757379\n2023-12-01,Volt Backpack,Backpacks,416,1799,748384\n2024-01-01,Volt Backpack,Backpacks,374,1835,686290\n2024-02-01,Volt Backpack,Backpacks,352,1835,645920\n2024-03-01,Volt Backpack,Backpacks,358,1835,656930\n2024-04-01,Volt Backpack,Backpacks,467,1835,856945\n2024-05-01,Volt Backpack,Backpacks,446,1835,818410\n2024-06-01,Volt Backpack,Backpacks,613,1835,1124855\n2024-07-01,Volt Backpack,Backpacks,547,1835,1003745\n2024-08-01,Volt Backpack,Backpacks,478,1835,877130\n2024-09-01,Volt Backpack,Backpacks,390,1835,715650\n2024-10-01,Volt Backpack,Backpacks,414,1835,759690\n2024-11-01,Volt Backpack,Backpacks,425,1835,779875\n2024-12-01,Volt Backpack,Backpacks,450,1835,825750\n2025-01-01,Volt Backpack,Backpacks,367,1871,686657\n2025-02-01,Volt Backpack,Backpacks,361,1871,675431\n2025-03-01,Volt Backpack,Backpacks,400,1871,748400\n2025-04-01,Volt Backpack,Backpacks,430,1871,804530\n2025-05-01,Volt Backpack,Backpacks,523,1871,978533\n2025-06-01,Volt Backpack,Backpacks,647,1871,1210537\n2025-07-01,Volt Backpack,Backpacks,572,1871,1070212\n2025-08-01,Volt Backpack,Backpacks,527,1871,986017\n2025-09-01,Volt Backpack,Backpacks,449,1871,840079\n2025-10-01,Volt Backpack,Backpacks,424,1871,793304\n2025-11-01,Volt Backpack,Backpacks,458,1871,856918\n2025-12-01,Volt Backpack,Backpacks,519,1871,971049\n2026-01-01,Volt Backpack,Backpacks,385,1907,734195\n2026-02-01,Volt Backpack,Backpacks,364,1907,694148\n2026-03-01,Volt Backpack,Backpacks,399,1907,760893\n2026-04-01,Volt Backpack,Backpacks,436,1907,831452\n2026-05-01,Volt Backpack,Backpacks,486,1907,926802\n2026-06-01,Volt Backpack,Backpacks,664,1907,1266248\n2026-07-01,Volt Backpack,Backpacks,608,1907,1159456\n2026-08-01,Volt Backpack,Backpacks,566,1907,1079362\n2026-09-01,Volt Backpack,Backpacks,474,1907,903918\n2026-10-01,Volt Backpack,Backpacks,400,1907,762800\n2023-01-01,Terra Blender,Kitchen appliances,212,3499,741788\n2023-02-01,Terra Blender,Kitchen appliances,210,3499,734790\n2023-03-01,Terra Blender,Kitchen appliances,240,3499,839760\n2023-04-01,Terra Blender,Kitchen appliances,249,3499,871251\n2023-05-01,Terra Blender,Kitchen appliances,239,3499,836261\n2023-06-01,Terra Blender,Kitchen appliances,244,3499,853756\n2023-07-01,Terra Blender,Kitchen appliances,260,3499,909740\n2023-08-01,Terra Blender,Kitchen appliances,246,3499,860754\n2023-09-01,Terra Blender,Kitchen appliances,238,3499,832762\n2023-10-01,Terra Blender,Kitchen appliances,276,3499,965724\n2023-11-01,Terra Blender,Kitchen appliances,312,3499,1091688\n2023-12-01,Terra Blender,Kitchen appliances,340,3499,1189660\n2024-01-01,Terra Blender,Kitchen appliances,203,3569,724507\n2024-02-01,Terra Blender,Kitchen appliances,199,3569,710231\n2024-03-01,Terra Blender,Kitchen appliances,220,3569,785180\n2024-04-01,Terra Blender,Kitchen appliances,233,3569,831577\n2024-05-01,Terra Blender,Kitchen appliances,239,3569,852991\n2024-06-01,Terra Blender,Kitchen appliances,246,3569,877974\n2024-07-01,Terra Blender,Kitchen appliances,267,3569,952923\n2024-08-01,Terra Blender,Kitchen appliances,256,3569,913664\n2024-09-01,Terra Blender,Kitchen appliances,214,3569,763766\n2024-10-01,Terra Blender,Kitchen appliances,260,3569,927940\n2024-11-01,Terra Blender,Kitchen appliances,296,3569,1056424\n2024-12-01,Terra Blender,Kitchen appliances,301,3569,1074269\n2025-01-01,Terra Blender,Kitchen appliances,173,3639,629547\n2025-02-01,Terra Blender,Kitchen appliances,175,3639,636825\n2025-03-01,Terra Blender,Kitchen appliances,212,3639,771468\n2025-04-01,Terra Blender,Kitchen appliances,214,3639,778746\n2025-05-01,Terra Blender,Kitchen appliances,227,3639,826053\n2025-06-01,Terra Blender,Kitchen appliances,229,3639,833331\n2025-07-01,Terra Blender,Kitchen appliances,245,3639,891555\n2025-08-01,Terra Blender,Kitchen appliances,239,3639,869721\n2025-09-01,Terra Blender,Kitchen appliances,213,3639,775107\n2025-10-01,Terra Blender,Kitchen appliances,239,3639,869721\n2025-11-01,Terra Blender,Kitchen appliances,303,3639,1102617\n2025-12-01,Terra Blender,Kitchen appliances,288,3639,1048032\n2026-01-01,Terra Blender,Kitchen appliances,194,3709,719546\n2026-02-01,Terra Blender,Kitchen appliances,206,3709,764054\n2026-03-01,Terra Blender,Kitchen appliances,201,3709,745509\n2026-04-01,Terra Blender,Kitchen appliances,209,3709,775181\n2026-05-01,Terra Blender,Kitchen appliances,218,3709,808562\n2026-06-01,Terra Blender,Kitchen appliances,208,3709,771472\n2026-07-01,Terra Blender,Kitchen appliances,249,3709,923541\n2026-08-01,Terra Blender,Kitchen appliances,193,3709,715837\n2026-09-01,Terra Blender,Kitchen appliances,209,3709,775181\n2026-10-01,Terra Blender,Kitchen appliances,230,3709,853070\n";
+
+let D = null, C = null, PR = [];
+const S = { name: '', measure: 'units', h: 6, test: false, sample: true, file: 'Sample data' };
+
+/* ---------- formatting ---------- */
+const fmtNum = v => Math.round(v).toLocaleString('en-IN');
+function fmtMoney(v) {
+  if (S.sample) {
+    if (v >= 1e7) return '₹' + (v / 1e7).toFixed(2) + ' Cr';
+    if (v >= 1e5) return '₹' + (v / 1e5).toFixed(1) + ' L';
+    return '₹' + Math.round(v).toLocaleString('en-IN');
+  }
+  if (v >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(v >= 1e4 ? 0 : 1) + 'k';
+  return String(Math.round(v));
+}
+const val = v => S.measure === 'revenue' ? fmtMoney(v) : fmtNum(v);
+const axisVal = v => S.measure === 'revenue' ? fmtMoney(v) : (v >= 1000 ? (v / 1000) + 'k' : String(v));
+const pctTxt = g => (g >= 0 ? '▲ ' : '▼ ') + Math.abs(g * 100).toFixed(1) + '%';
+function niceTicks(max) {
+  const raw = max / 4, pow = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / pow;
+  const step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * pow, t = [];
+  for (let v = 0; v <= max + step * 0.01; v += step) t.push(v);
+  return t;
+}
+
+function notice(msg, ok) { $('#notice').innerHTML = msg ? '<div class="notice' + (ok ? ' ok' : '') + '" role="' + (ok ? 'status' : 'alert') + '">' + esc(msg) + '</div>' : ''; }
+
+/* ---------- data ---------- */
+function setData(d, file, sample) {
+  D = d; S.sample = sample; S.file = file;
+  S.name = D.all ? 'All products' : D.names[0];
+  S.measure = 'units';
+  $('#product').innerHTML = (D.all ? ['All products'] : []).concat(D.names).map(n => '<option>' + esc(n) + '</option>').join('');
+  $('#product').value = S.name;
+  $('#mRev').disabled = !D.hasRevenue;
+  $('#mRev').title = D.hasRevenue ? '' : 'This file has no revenue or price column';
+  const first = D.months[0], last = D.months[D.months.length - 1];
+  $('#dsLine').textContent = (sample ? 'Sample data' : file) + ' · ' + (D.all ? D.names.length + ' products · ' : '') + D.months.length + ' months, ' + mlabel(first) + ' to ' + mlabel(last);
+  render();
+}
+
+function compute() {
+  const ser = D.series[S.name], y = (S.measure === 'revenue' && ser.revenue) ? ser.revenue : ser.units;
+  const start = mOf(D.months[0]);
+  return { y, start, f: FC.forecast(y, S.h, start), bt: FC.backtest(y, 6, start) };
+}
+const sameLastYear = (y, h) => (y.length >= 12 && h <= 12) ? sum(y.slice(y.length - 12, y.length - 12 + h)) : null;
+
+/* ---------- render all ---------- */
+function render() {
+  C = compute();
+  $('#hVal').textContent = S.h + ' months';
+  $('#mUnits').setAttribute('aria-pressed', S.measure === 'units');
+  $('#mRev').setAttribute('aria-pressed', S.measure === 'revenue');
+  renderKpis(); renderLegend(); drawMain(); drawSeason(); renderProducts(); renderTable(); renderFacts();
+}
+
+function renderKpis() {
+  const { f, y, bt } = C, n = y.length, total = sum(f.fc), prev = sameLastYear(y, S.h);
+  const g = prev ? total / prev - 1 : null;
+  let pk = 0; f.fc.forEach((v, i) => { if (v > f.fc[pk]) pk = i; });
+  const lastKey = D.months[n - 1];
+  const word = S.measure === 'revenue' ? 'revenue' : 'units';
+  const k = [
+    ['Expected ' + word + ', next ' + S.h + ' months', val(total), 'Likely range ' + val(sum(f.lo)) + ' to ' + val(sum(f.hi))],
+    ['Against the same months last year', g === null ? 'n/a' : '<span class="' + (g >= 0 ? 'up' : 'down') + '">' + pctTxt(g) + '</span>', prev ? 'Last year: ' + val(prev) : 'Needs 12 months of history'],
+    ['Strongest forecast month', mlabel(lastKey + 1 + pk), val(f.fc[pk])],
+    ['Past accuracy', bt ? bt.mape.toFixed(1) + '% miss' : 'n/a', bt ? 'Average miss when the last 6 months were hidden from the model' : 'Needs 18 months of history to test']];
+  $('#kpis').innerHTML = k.map(x => '<div class="kpi"><div class="eyebrow">' + x[0] + '</div><div class="v mono" style="font-family:var(--display)">' + x[1] + '</div><div class="s">' + x[2] + '</div></div>').join('');
+}
+
+function renderLegend() {
+  $('#legend').innerHTML = '<span><i class="sw-line"></i>Actual</span><span><i class="sw-dash"></i>Forecast</span><span><i class="sw-band"></i>Likely range</span>' +
+    (S.test && C.bt ? '<span><i class="sw-dot"></i>Test prediction for the last 6 months</span>' : '');
+}
+
+/* ---------- main forecast chart ---------- */
+function drawMain() {
+  const { y, f, bt } = C, box = $('#mainChart'), n = y.length, h = S.h, N = n + h;
+  const W = Math.max(300, Math.floor(box.clientWidth) || 800), narrow = W < 520, H = narrow ? 270 : 350;
+  const L = narrow ? 44 : 62, R = 14, T = 14, B = 30;
+  const showT = S.test && bt;
+  const maxV = Math.max(...y, ...f.hi, ...(showT ? bt.hi : [0])) * 1.04;
+  const ticks = niceTicks(maxV), top = ticks[ticks.length - 1];
+  const X = i => L + i / (N - 1) * (W - L - R), Y = v => T + (1 - v / top) * (H - T - B);
+  const first = D.months[0];
+  $('#mainTitle').textContent = (S.name === 'All products' ? 'All products' : S.name) + ': ' + (S.measure === 'revenue' ? 'revenue' : 'units sold') + ' per month';
+  $('#mainSub').textContent = 'Next ' + h + ' months forecast from ' + n + ' months of history.' + (C.f.mode === 'seasonal' ? '' : ' Seasons are not modelled because there is less than 24 months of data.');
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Line chart of monthly ' + esc(S.measure) + ' for ' + esc(S.name) + ' with a ' + h + ' month forecast. The same figures are in the table below.">';
+  if (showT) s += '<rect x="' + X(n - 6) + '" y="' + T + '" width="' + (X(n - 1) - X(n - 6)) + '" height="' + (H - T - B) + '" fill="#F4F9E8"/><text x="' + (X(n - 6) + 4) + '" y="' + (T + 11) + '" style="font-size:10.5px">hidden from model</text>';
+  ticks.forEach(v => { s += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '"/><text x="' + (L - 7) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + axisVal(v) + '</text>'; });
+  s += '<line class="ax" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(0) + '" y2="' + Y(0) + '"/>';
+  for (let i = 0; i < N; i++) {
+    const k = first + i, m = mOf(k);
+    if (m === 0) s += '<text x="' + X(i) + '" y="' + (H - 9) + '" text-anchor="middle">' + Math.floor(k / 12) + '</text>';
+    else if (m === 6 && !narrow) s += '<text x="' + X(i) + '" y="' + (H - 9) + '" text-anchor="middle" style="opacity:.7">Jul</text>';
+  }
+  // band
+  const px = i => X(n - 1 + i), ly = y[n - 1];
+  let band = 'M' + X(n - 1) + ',' + Y(ly);
+  for (let i = 0; i < h; i++) band += 'L' + px(i + 1) + ',' + Y(f.hi[i]);
+  for (let i = h - 1; i >= 0; i--) band += 'L' + px(i + 1) + ',' + Y(f.lo[i]);
+  s += '<path d="' + band + 'Z" fill="#CFE3A9" fill-opacity=".75"/>';
+  // forecast line
+  let fl = 'M' + X(n - 1) + ',' + Y(ly); for (let i = 0; i < h; i++) fl += 'L' + px(i + 1) + ',' + Y(f.fc[i]);
+  s += '<path d="' + fl + '" fill="none" stroke="#3F6B2A" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round" stroke-linejoin="round"/>';
+  // actual
+  s += '<path d="' + y.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join('') + '" fill="none" stroke="#1F2B18" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+  // test prediction
+  if (showT) {
+    s += '<path d="' + bt.pred.map((v, i) => (i ? 'L' : 'M') + X(n - 6 + i).toFixed(1) + ',' + Y(v).toFixed(1)).join('') + '" fill="none" stroke="#2F7FBF" stroke-width="2.2"/>';
+    bt.pred.forEach((v, i) => { s += '<circle cx="' + X(n - 6 + i) + '" cy="' + Y(v) + '" r="3.8" fill="#2F7FBF" stroke="#fff" stroke-width="1.5"/>'; });
+  }
+  s += '<circle cx="' + X(n - 1) + '" cy="' + Y(ly) + '" r="4.5" fill="#1F2B18" stroke="#fff" stroke-width="2"/>';
+  s += '<circle cx="' + X(N - 1) + '" cy="' + Y(f.fc[h - 1]) + '" r="4.5" fill="#3F6B2A" stroke="#fff" stroke-width="2"/>';
+  s += '<text class="lbl" x="' + X(N - 1) + '" y="' + (Y(f.hi[h - 1]) - 8) + '" text-anchor="end">Forecast</text>';
+  s += '<line id="xh" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="#556548" stroke-width="1" hidden/><circle id="xc" r="5" fill="#fff" stroke="#1F2B18" stroke-width="2" hidden/>';
+  s += '<rect id="hit" x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - T - B) + '" fill="transparent" style="touch-action:pan-y;cursor:crosshair"/></svg><div class="tip" id="tip" hidden></div>';
+  box.innerHTML = s;
+  const hit = $('#hit'), xh = $('#xh'), xc = $('#xc'), tip = $('#tip');
+  const show = e => {
+    const r = hit.getBoundingClientRect();
+    const i = Math.max(0, Math.min(N - 1, Math.round((e.clientX - r.left) / r.width * (N - 1))));
+    const k = first + i; let v, extra = '';
+    if (i < n) {
+      v = y[i]; extra = '<b>' + mlabel(k) + '</b><br>Actual ' + val(v);
+      if (showT && i >= n - 6) { const p = bt.pred[i - (n - 6)]; extra += '<br>Test prediction ' + val(p) + ' (' + (p / y[i] - 1 >= 0 ? '+' : '−') + Math.abs((p / y[i] - 1) * 100).toFixed(1) + '%)'; }
+    } else { const j = i - n; v = f.fc[j]; extra = '<b>' + mlabel(k) + '</b><br>Forecast ' + val(v) + '<br>Likely ' + val(f.lo[j]) + ' to ' + val(f.hi[j]); }
+    xh.setAttribute('x1', X(i)); xh.setAttribute('x2', X(i)); xh.hidden = false;
+    xc.setAttribute('cx', X(i)); xc.setAttribute('cy', Y(v)); xc.hidden = false;
+    tip.innerHTML = extra; tip.hidden = false;
+    const tw = tip.offsetWidth; let tx = X(i) + 14; if (tx + tw > W - 4) tx = X(i) - tw - 14;
+    tip.style.left = Math.max(4, tx) + 'px'; tip.style.top = Math.max(4, Y(v) - 54) + 'px';
+  };
+  hit.addEventListener('pointermove', show); hit.addEventListener('pointerdown', show);
+  hit.addEventListener('pointerleave', () => { xh.hidden = true; xc.hidden = true; tip.hidden = true; });
+}
+
+/* ---------- season chart ---------- */
+function drawSeason() {
+  const el = $('#seasonChart'), idx = C.f.season;
+  if (!idx) { el.innerHTML = '<div class="empty">Seasons need at least 24 months of history. This series has ' + C.y.length + '.</div>'; return; }
+  const W = Math.max(280, Math.floor(el.clientWidth) || 420), H = 230, L = 30, R = 6, T = 26, B = 28;
+  const mx = Math.max(1.3, Math.max(...idx) * 1.12), bw = (W - L - R) / 12;
+  const Y = v => T + (1 - v / mx) * (H - T - B), yb = Y(0);
+  let pk = 0, tr = 0; idx.forEach((v, i) => { if (v > idx[pk]) pk = i; if (v < idx[tr]) tr = i; });
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Seasonal index by month. Highest ' + MF[pk] + ' ' + idx[pk].toFixed(2) + ', lowest ' + MF[tr] + ' ' + idx[tr].toFixed(2) + '.">';
+  [0, 0.5, 1, 1.5].filter(v => v <= mx).forEach(v => { s += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + v.toFixed(1) + '</text>'; });
+  idx.forEach((v, i) => {
+    const x = L + i * bw + bw * 0.14, w = bw * 0.72, y = Y(v), r = Math.min(4, w / 2);
+    const col = i === pk ? '#3F6B2A' : i === tr ? '#C68A14' : '#A9CC84';
+    s += '<path d="M' + x + ',' + yb + 'V' + (y + r) + 'a' + r + ',' + r + ' 0 0 1 ' + r + ',' + (-r) + 'h' + (w - 2 * r) + 'a' + r + ',' + r + ' 0 0 1 ' + r + ',' + r + 'V' + yb + 'Z" fill="' + col + '"/>';
+    if (i === pk || i === tr || W > 520) s += '<text x="' + (x + w / 2) + '" y="' + (y - 6) + '" text-anchor="middle" style="font-size:10.5px;fill:#1F2B18">' + v.toFixed(2) + '</text>';
+    s += '<text x="' + (x + w / 2) + '" y="' + (H - 9) + '" text-anchor="middle">' + MN[i][0] + (W > 400 ? MN[i].slice(1) : '') + '</text>';
+    s += '<rect x="' + (L + i * bw) + '" y="' + T + '" width="' + bw + '" height="' + (H - T - B) + '" fill="transparent" data-i="' + i + '"/>';
+  });
+  s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(1) + '" y2="' + Y(1) + '" stroke="#556548" stroke-width="1" stroke-dasharray="4 3"/></svg><div class="tip" id="stip" hidden></div>';
+  el.innerHTML = s;
+  const tip = $('#stip');
+  el.querySelectorAll('rect[data-i]').forEach(r => {
+    const go = e => { const i = +r.dataset.i, v = idx[i]; tip.innerHTML = '<b>' + MF[i] + '</b><br>' + v.toFixed(2) + '× an average month (' + (v >= 1 ? '+' : '−') + Math.abs((v - 1) * 100).toFixed(0) + '%)'; tip.hidden = false; tip.style.left = Math.min(W - tip.offsetWidth - 4, Math.max(4, L + i * bw)) + 'px'; tip.style.top = '4px'; };
+    r.addEventListener('pointermove', go); r.addEventListener('pointerdown', go); r.addEventListener('pointerleave', () => { tip.hidden = true; });
+  });
+}
+
+/* ---------- product comparison ---------- */
+function renderProducts() {
+  const card = $('#prodCard');
+  card.hidden = !D.all;
+  if (!D.all) { PR = []; return; }
+  let names = D.names.slice();
+  const rec = nm => sum((D.series[nm].units).slice(-12));
+  if (names.length > 12) names = names.sort((a, b) => rec(b) - rec(a)).slice(0, 12);
+  PR = names.map(nm => {
+    const ser = D.series[nm], y = (S.measure === 'revenue' && ser.revenue) ? ser.revenue : ser.units;
+    const f = FC.forecast(y, S.h, mOf(D.months[0])), tot = sum(f.fc), prev = sameLastYear(y, S.h);
+    return { nm, tot, g: prev ? tot / prev - 1 : null };
+  }).sort((a, b) => b.tot - a.tot);
+  const mx = PR[0].tot || 1;
+  $('#prows').innerHTML = PR.map(p => '<button type="button" class="prow' + (p.nm === S.name ? ' sel' : '') + '" data-p="' + esc(p.nm) + '" aria-pressed="' + (p.nm === S.name) + '"><span class="pn">' + esc(p.nm) + '</span><span class="ptrack"><i style="width:' + (p.tot / mx * 100).toFixed(1) + '%"></i></span><span class="pv">' + val(p.tot) + '</span><span class="pg ' + (p.g === null ? '' : p.g >= 0 ? 'up' : 'down') + '">' + (p.g === null ? '' : pctTxt(p.g)) + '</span></button>').join('');
+}
+
+/* ---------- table ---------- */
+function renderTable() {
+  const { f, y } = C, n = y.length, lastKey = D.months[n - 1];
+  $('#tblSub').textContent = 'Forecast for ' + (S.name) + ', ' + (S.measure === 'revenue' ? 'revenue' : 'units') + '. Last column compares with the same month a year earlier.';
+  $('#tbl').innerHTML = '<thead><tr><th>Month</th><th>Forecast</th><th>Low</th><th>High</th><th>vs last year</th></tr></thead><tbody>' +
+    f.fc.map((v, i) => {
+      const k = lastKey + 1 + i, p = (n + i - 12 >= 0 && n + i - 12 < n) ? y[n + i - 12] : null, g = p ? v / p - 1 : null;
+      return '<tr><td>' + mlabel(k) + '</td><td>' + val(v) + '</td><td>' + val(f.lo[i]) + '</td><td>' + val(f.hi[i]) + '</td><td class="' + (g === null ? '' : g >= 0 ? 'up' : 'down') + '">' + (g === null ? 'n/a' : pctTxt(g)) + '</td></tr>';
+    }).join('') + '</tbody>';
+  $('#csvBox').hidden = true; $('#copyMsg').textContent = '';
+}
+
+/* ---------- plain-language findings ---------- */
+function renderFacts() {
+  const { y, f, bt } = C, n = y.length, out = [], who = S.name === 'All products' ? 'Across all products,' : S.name + ':';
+  const what = S.measure === 'revenue' ? 'revenue' : 'units sold';
+  if (n >= 24) { const a = sum(y.slice(-12)), b = sum(y.slice(-24, -12)), g = a / b - 1; out.push(['', who + ' ' + what + ' over the last 12 months were ' + Math.abs(g * 100).toFixed(1) + '% ' + (g >= 0 ? 'above' : 'below') + ' the 12 months before.']); }
+  if (f.season) { let pk = 0, tr = 0; f.season.forEach((v, i) => { if (v > f.season[pk]) pk = i; if (v < f.season[tr]) tr = i; }); out.push(['', 'Sales peak in ' + MF[pk] + ' (' + f.season[pk].toFixed(2) + '× an average month) and are lowest in ' + MF[tr] + ' (' + f.season[tr].toFixed(2) + '×).']); }
+  const tot = sum(f.fc), prev = sameLastYear(y, S.h);
+  out.push(['', 'Expect about ' + val(tot) + ' over the next ' + S.h + ' months' + (prev ? ', ' + Math.abs((tot / prev - 1) * 100).toFixed(0) + '% ' + (tot >= prev ? 'above' : 'below') + ' the same months last year' : '') + '.']);
+  if (D.all && S.name === 'All products' && PR.length > 1) {
+    const g = PR.filter(p => p.g !== null).sort((a, b) => b.g - a.g);
+    if (g.length > 1) out.push(['', 'Fastest growing: ' + g[0].nm + ' (' + (g[0].g >= 0 ? '+' : '−') + Math.abs(g[0].g * 100).toFixed(0) + '% against last year). Weakest: ' + g[g.length - 1].nm + ' (' + (g[g.length - 1].g >= 0 ? '+' : '−') + Math.abs(g[g.length - 1].g * 100).toFixed(0) + '%).']);
+  }
+  if (bt) out.push(['', 'With the last 6 months hidden, the model’s predictions were off by ' + bt.mape.toFixed(1) + '% on average and ran ' + (Math.abs(bt.bias) < 1 ? 'about right' : bt.bias > 0 ? Math.abs(bt.bias).toFixed(1) + '% high' : Math.abs(bt.bias).toFixed(1) + '% low') + ' overall.']);
+  else out.push(['warn', 'There is not enough history to run the accuracy test. It needs 18 months.']);
+  if (f.mode !== 'seasonal') out.push(['warn', 'This series has fewer than 24 months or contains zero months, so the forecast follows the trend only and ignores seasons.']);
+  $('#facts').innerHTML = out.map(o => '<li class="' + o[0] + '">' + esc(o[1]) + '</li>').join('');
+}
+
+/* ---------- events ---------- */
+$('#product').addEventListener('change', e => { S.name = e.target.value; render(); });
+$('#mUnits').addEventListener('click', () => { S.measure = 'units'; render(); });
+$('#mRev').addEventListener('click', () => { if (D.hasRevenue) { S.measure = 'revenue'; render(); } });
+$('#horizon').addEventListener('input', e => { S.h = +e.target.value; render(); });
+$('#test').addEventListener('change', e => { S.test = e.target.checked; renderLegend(); drawMain(); });
+$('#prows').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { S.name = b.dataset.p; $('#product').value = S.name; render(); } });
+$('#reset').addEventListener('click', () => { try { setData(FC.buildDataset(FC.parseCSV(SAMPLE_CSV)), 'Sample data', true); notice(''); } catch (e) { notice(e.message); } });
+$('#file').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  if (f.size > 8e6) { notice('That file is over 8 MB. Keep only the date, product and units columns and try again.'); e.target.value = ''; return; }
+  const rd = new FileReader();
+  rd.onload = () => { try { const d = FC.buildDataset(FC.parseCSV(String(rd.result))); setData(d, f.name, false); notice('Read ' + d.months.length + ' months for ' + (d.all ? d.names.length + ' products' : d.names[0]) + ' using date "' + d.cols.date + '"' + (d.cols.product ? ', product "' + d.cols.product + '"' : '') + ', units "' + d.cols.units + '"' + (d.cols.revenue ? ', revenue "' + d.cols.revenue + '"' : '') + '.' + (d.bad ? ' ' + d.bad + ' rows were skipped.' : ''), true); } catch (err) { notice(err.message); } e.target.value = ''; };
+  rd.onerror = () => notice('The file could not be read. Try saving it as CSV again.');
+  rd.readAsText(f);
+});
+$('#copy').addEventListener('click', () => {
+  const lastKey = D.months[C.y.length - 1];
+  const csv = 'Month,Forecast,Low,High\n' + C.f.fc.map((v, i) => [mlabel(lastKey + 1 + i), Math.round(v), Math.round(C.f.lo[i]), Math.round(C.f.hi[i])].join(',')).join('\n');
+  const box = $('#csvBox'), msg = $('#copyMsg'); box.value = csv;
+  const fb = () => { box.hidden = false; box.focus(); box.select(); msg.textContent = ' Copying is blocked here. The text is selected, press Ctrl+C.'; };
+  try { navigator.clipboard.writeText(csv).then(() => { msg.textContent = ' Copied. Paste it into Excel or a sheet.'; }, fb); } catch (e) { fb(); }
+});
+let raf = 0;
+const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (C) { drawMain(); drawSeason(); } }); };
+if (window.ResizeObserver) { const ro = new ResizeObserver(redraw); ro.observe($('#mainChart')); ro.observe($('#seasonChart')); } else window.addEventListener('resize', redraw);
+
+try { setData(FC.buildDataset(FC.parseCSV(SAMPLE_CSV)), 'Sample data', true); } catch (e) { notice(e.message); }
+})();
+
+</script>
+
+</body></html>
